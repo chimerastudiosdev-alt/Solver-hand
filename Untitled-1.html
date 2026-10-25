@@ -1,0 +1,479 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABSOLUTE SOLVER // NIGHTINDEX</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+:root {
+  --yellow:#ffe600;
+  --gold:#ffb800;
+  --black:#050502;
+  --dim:#77701c;
+}
+* { box-sizing:border-box }
+body {
+  margin:0;background:var(--black);color:var(--yellow);
+  font-family:'Share Tech Mono',monospace;overflow:hidden;
+}
+body:after {
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
+  background:repeating-linear-gradient(0deg,transparent 0 3px,#ffe60008 4px);
+}
+#scene { position:fixed;inset:0;width:100%;height:100% }
+header {
+  position:absolute;top:0;left:0;right:0;padding:20px 24px;
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid #ffe60040;
+  background:linear-gradient(#000e,transparent);z-index:3;
+}
+.brand { font-size:clamp(14px,2vw,23px);letter-spacing:3px }
+.brand small { display:block;font-size:10px;color:#aaa45a;margin-top:7px }
+.status {font-size:11px;text-align:right;line-height:1.8}
+#state {color:white}
+.panel {
+  position:absolute;z-index:3;padding:14px;border:1px solid #ffe60060;
+  background:#090900d9;box-shadow:0 0 18px #ffe6000c;
+}
+.left {top:115px;left:20px;width:205px}
+.right {top:115px;right:20px;width:205px}
+.label {font-size:10px;color:#a49b37;letter-spacing:2px;margin-bottom:12px}
+.big {font-size:20px;margin:8px 0 14px}
+.line {height:1px;background:#ffe60035;margin:12px 0}
+.metric {display:flex;justify-content:space-between;font-size:11px;margin:9px 0}
+.bar {height:3px;background:#38340c;margin-top:6px}
+.bar span {display:block;height:100%;background:var(--yellow);width:0%;transition:width .1s}
+.gesture {font-size:12px;padding:8px 5px;border-bottom:1px solid #ffe60020}
+.gesture b {float:right;color:#615c20}
+.gesture.active {color:white;background:#ffe60013}
+.gesture.active b {color:var(--yellow)}
+#camera {
+  position:absolute;right:20px;bottom:90px;width:180px;
+  border:1px solid #ffe60070;z-index:4;transform:scaleX(-1);
+  opacity:.7;background:#111;
+}
+#cameraLabel {
+  position:absolute;right:20px;bottom:270px;z-index:4;font-size:10px;
+}
+#startScreen {
+  position:fixed;inset:0;z-index:10;display:grid;place-items:center;
+  background:radial-gradient(ellipse,#262000 0%,#080800 45%,#000 100%);
+  text-align:center;padding:20px;
+}
+#startScreen h1 {font-size:clamp(30px,7vw,70px);letter-spacing:5px;margin:12px 0}
+#startScreen p {max-width:480px;color:#b5ac60;line-height:1.8;font-size:13px}
+button {
+  font-family:inherit;background:var(--yellow);color:#090900;
+  padding:14px 24px;border:0;cursor:pointer;font-size:13px;
+  letter-spacing:2px;margin:8px;
+}
+button:hover {box-shadow:0 0 25px #ffe60080}
+#bottom {
+  position:absolute;z-index:3;bottom:20px;left:20px;right:20px;
+  display:flex;justify-content:space-between;align-items:end;
+  gap:12px;font-size:10px;pointer-events:none;
+}
+#log {max-width:60%;line-height:1.8;color:#9f983b}
+#powerName {font-size:15px;color:white;margin-top:5px}
+#exit {background:transparent;color:var(--yellow);border:1px solid #ffe60070}
+#flash {
+ position:fixed;inset:0;background:#ffe600;opacity:0;
+ pointer-events:none;z-index:8;
+}
+@media(max-width:650px) {
+ .left {left:8px;top:95px;width:155px;padding:9px}
+ .right {right:8px;top:auto;bottom:120px;width:155px;padding:9px}
+ header {padding:13px}
+ .brand {letter-spacing:1px}
+ #camera {width:115px;right:8px;bottom:72px}
+ #cameraLabel {right:8px;bottom:180px}
+ .big {font-size:15px}
+ #bottom {left:10px;right:10px;bottom:8px}
+}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="flash"></div>
+
+<header>
+  <div class="brand">
+    ABSOLUTE SOLVER
+    <small>NIGHTINDEX // EXPERIMENT 001</small>
+  </div>
+  <div class="status">
+    SYSTEM: <span id="state">DORMANT</span><br>
+    TRACKING: <span id="tracking">OFFLINE</span>
+  </div>
+</header>
+
+<div class="panel left">
+  <div class="label">◈ SOLVER CORE</div>
+  <div class="big" id="power">AWAITING HOST</div>
+  <div class="line"></div>
+  <div class="metric"><span>ENERGY</span><span id="energyText">0%</span></div>
+  <div class="bar"><span id="energyBar"></span></div>
+  <div class="metric"><span>HAND X</span><span id="hx">---</span></div>
+  <div class="metric"><span>HAND Y</span><span id="hy">---</span></div>
+  <div class="metric"><span>OBJECTS</span><span id="objects">6</span></div>
+</div>
+
+<div class="panel right">
+  <div class="label">◈ GESTURE DATABASE</div>
+  <div class="gesture" id="g-open">OPEN PALM <b>ACTIVATE</b></div>
+  <div class="gesture" id="g-pinch">PINCH <b>GRAB</b></div>
+  <div class="gesture" id="g-fist">FIST <b>CRUSH</b></div>
+  <div class="gesture" id="g-point">POINT <b>TARGET</b></div>
+  <div class="gesture" id="g-two">TWO FINGERS <b>SPIN</b></div>
+  <div class="line"></div>
+  <div class="label">CURRENT ACTION</div>
+  <div id="action">NO INPUT DETECTED</div>
+</div>
+
+<div id="cameraLabel">HOST FEED // MIRRORED</div>
+<video id="camera" autoplay playsinline muted></video>
+
+<div id="bottom">
+  <div>
+    <div class="label">LAST TRANSMISSION</div>
+    <div id="log">> Waiting for host connection...</div>
+    <div id="powerName">THE VOID IS LISTENING.</div>
+  </div>
+  <button id="exit" onclick="location.reload()">RESET SYSTEM</button>
+</div>
+
+<div id="startScreen">
+  <div>
+    <div style="letter-spacing:6px;font-size:11px;color:#b8a900">NIGHTINDEX PRESENTS</div>
+    <h1>ABSOLUTE<br>SOLVER</h1>
+    <p>
+      HOST INTERFACE // GESTURE RECOGNITION<br>
+      Open your hand. Control the impossible.<br><br>
+      Camera access is used for live hand tracking.
+      Video is processed in your browser and is not uploaded by this page.
+    </p>
+    <button id="start">INITIALIZE SOLVER</button>
+    <p id="error" style="color:#ffad45"></p>
+  </div>
+</div>
+
+<script type="module">
+import { HandLandmarker, FilesetResolver }
+  from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22";
+
+const $ = id => document.getElementById(id);
+const canvas = $("scene");
+const ctx = canvas.getContext("2d");
+const video = $("camera");
+
+let tracker, active = false, hand = null;
+let energy = 0, rotation = 0, pulse = 0;
+let lastGesture = "", lastAction = 0;
+let handX = innerWidth/2, handY = innerHeight/2;
+let particles = [], objects = [];
+let width = innerWidth, height = innerHeight;
+
+function resize() {
+  width = canvas.width = innerWidth * devicePixelRatio;
+  height = canvas.height = innerHeight * devicePixelRatio;
+  canvas.style.width = innerWidth + "px";
+  canvas.style.height = innerHeight + "px";
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+addEventListener("resize", resize);
+resize();
+
+function spawnObjects() {
+  objects = Array.from({length:6},(_,i)=>({
+    x:width/devicePixelRatio*(.2+Math.random()*.6),
+    y:height/devicePixelRatio*(.2+Math.random()*.6),
+    r:12+Math.random()*12,
+    phase:Math.random()*6.28,
+    grabbed:false,
+    alive:true
+  }));
+}
+spawnObjects();
+
+function log(msg) {
+  $("log").textContent = "> " + msg;
+}
+function flash() {
+  $("flash").animate([{opacity:.45},{opacity:0}],{duration:250});
+}
+function burst(x,y,count=20) {
+  for(let i=0;i<count;i++) particles.push({
+    x,y,
+    vx:(Math.random()-.5)*8,
+    vy:(Math.random()-.5)*8,
+    life:30+Math.random()*30
+  });
+}
+
+function fingerUp(lm, tip, pip) {
+  return lm[tip].y < lm[pip].y;
+}
+function distance(a,b) {
+  return Math.hypot(a.x-b.x,a.y-b.y);
+}
+
+function classify(lm) {
+  const index = fingerUp(lm,8,6);
+  const middle = fingerUp(lm,12,10);
+  const ring = fingerUp(lm,16,14);
+  const pinky = fingerUp(lm,20,18);
+  const pinch = distance(lm[4],lm[8]) < .055;
+  const count = [index,middle,ring,pinky].filter(Boolean).length;
+
+  if (pinch) return "pinch";
+  if (count===0) return "fist";
+  if (index && middle && !ring && !pinky) return "two";
+  if (index && !middle && !ring && !pinky) return "point";
+  if (count>=4) return "open";
+  return "idle";
+}
+
+function setGesture(g) {
+  for(const name of ["open","pinch","fist","point","two"])
+    $("g-"+name).classList.toggle("active",g===name);
+}
+
+function activate(g) {
+  const now = performance.now();
+  if(g !== lastGesture) {
+    lastGesture = g;
+    if(g !== "idle") {
+      $("action").textContent = ({
+        open:"SOLVER ONLINE",
+        pinch:"TELEKINETIC GRIP",
+        fist:"MATTER DELETION",
+        point:"TARGET LOCK",
+        two:"GRAVITY DISTORTION"
+      })[g] || "SCANNING";
+      log(({
+        open:"Host recognized. Solver awakened.",
+        pinch:"Telekinetic connection established.",
+        fist:"Matter deletion protocol engaged.",
+        point:"Target acquired.",
+        two:"Gravity field destabilized."
+      })[g] || "Signal received.");
+    }
+  }
+
+  if(g==="open") {
+    energy=Math.min(100,energy+.2);
+    pulse+=.04;
+  } else if(g==="pinch") {
+    energy=Math.min(100,energy+.12);
+    const target=objects.find(o=>o.alive);
+    if(target && hand) {
+      target.x+=(handX-target.x)*.12;
+      target.y+=(handY-target.y)*.12;
+      target.grabbed=true;
+    }
+  } else if(g==="fist" && now-lastAction>500) {
+    lastAction=now;
+    const target=objects.find(o=>o.alive);
+    if(target) {
+      burst(target.x,target.y,32);
+      target.alive=false;
+      energy=Math.max(0,energy-8);
+      flash();
+      log("OBJECT ERASED. MATTER INTEGRITY: ZERO.");
+    } else {
+      spawnObjects();
+    }
+  } else if(g==="point") {
+    for(const o of objects) o.grabbed=false;
+    const nearest=objects.filter(o=>o.alive).sort((a,b)=>
+      Math.hypot(a.x-handX,a.y-handY)-
+      Math.hypot(b.x-handX,b.y-handY))[0];
+    if(nearest) nearest.phase+=.1;
+  } else if(g==="two") {
+    rotation+=.035;
+    objects.forEach(o=>{
+      if(o.alive) {
+        const dx=o.x-handX, dy=o.y-handY;
+        o.x+=(-dy)*.015;
+        o.y+=(dx)*.015;
+      }
+    });
+  } else {
+    objects.forEach(o=>o.grabbed=false);
+    energy=Math.max(0,energy-.035);
+  }
+
+  $("energyText").textContent=Math.floor(energy)+"%";
+  $("energyBar").style.width=energy+"%";
+  $("power").textContent=energy>0?"HOST CONNECTED":"AWAITING HOST";
+  $("state").textContent=energy>0?"ACTIVE":"STANDBY";
+  $("tracking").textContent=hand?"ONLINE":"SEARCHING";
+  $("hx").textContent=hand?Math.round(handX)+"px":"---";
+  $("hy").textContent=hand?Math.round(handY)+"px":"---";
+  $("objects").textContent=objects.filter(o=>o.alive).length;
+}
+
+async function init() {
+  $("start").disabled=true;
+  $("error").textContent="CONNECTING TO SOLVER CORE...";
+  try {
+    const vision=await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm"
+    );
+    tracker=await HandLandmarker.createFromOptions(vision,{
+      baseOptions:{
+        modelAssetPath:
+          "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+        delegate:"GPU"
+      },
+      runningMode:"VIDEO",
+      numHands:1
+    });
+
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:"user",width:640,height:480},
+      audio:false
+    });
+    video.srcObject=stream;
+    await video.play();
+
+    active=true;
+    $("startScreen").style.display="none";
+    log("Host feed established. Awaiting gestures.");
+    requestAnimationFrame(loop);
+  } catch(e) {
+    $("start").disabled=false;
+    $("error").textContent="INITIALIZATION FAILED: "+e.message+
+      " — Use HTTPS or localhost and allow camera access.";
+  }
+}
+$("start").addEventListener("click",init);
+
+let lastFrame=-1;
+function loop() {
+  if(!active) return;
+  requestAnimationFrame(loop);
+
+  if(video.readyState>=2 && video.currentTime!==lastFrame) {
+    lastFrame=video.currentTime;
+    const result=tracker.detectForVideo(video,performance.now());
+    if(result.landmarks?.length) {
+      hand=result.landmarks[0];
+      handX=(1-hand[9].x)*innerWidth;
+      handY=hand[9].y*innerHeight;
+      activate(classify(hand));
+      setGesture(classify(hand));
+    } else {
+      hand=null;
+      lastGesture="";
+      $("tracking").textContent="SEARCHING";
+      $("action").textContent="NO HAND DETECTED";
+      setGesture("idle");
+      objects.forEach(o=>o.grabbed=false);
+    }
+  }
+  draw();
+}
+
+function draw() {
+  const w=innerWidth,h=innerHeight;
+  ctx.clearRect(0,0,w,h);
+  const cx=hand?handX:w/2, cy=hand?handY:h/2;
+  const t=performance.now()*.001;
+
+  // Subtle targeting grid
+  ctx.strokeStyle="#ffe60012";ctx.lineWidth=1;
+  for(let x=0;x<w;x+=50){
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();
+  }
+  for(let y=0;y<h;y+=50){
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+  }
+
+  // Rotating Solver core
+  ctx.save();ctx.translate(cx,cy);
+  ctx.rotate(rotation+t*.12);
+  ctx.strokeStyle="#ffe600";ctx.lineWidth=1.5;
+  for(let i=0;i<3;i++){
+    ctx.beginPath();
+    ctx.arc(0,0,35+i*17+Math.sin(t*3+i)*3,
+      t*(i%2?-.4:.4)+i,t*(i%2?-.4:.4)+i+Math.PI*1.45);
+    ctx.stroke();
+  }
+  ctx.rotate(-rotation*2-t*.3);
+  ctx.strokeStyle="#ffe60099";
+  ctx.beginPath();
+  ctx.moveTo(-20,-20);ctx.lineTo(20,20);
+  ctx.moveTo(20,-20);ctx.lineTo(-20,20);
+  ctx.stroke();
+  ctx.restore();
+
+  // Crosshair follows hand
+  if(hand){
+    ctx.strokeStyle="#ffe600";
+    ctx.beginPath();
+    ctx.moveTo(cx-22,cy);ctx.lineTo(cx-9,cy);
+    ctx.moveTo(cx+9,cy);ctx.lineTo(cx+22,cy);
+    ctx.moveTo(cx,cy-22);ctx.lineTo(cx,cy-9);
+    ctx.moveTo(cx,cy+9);ctx.lineTo(cx,cy+22);
+    ctx.stroke();
+    // Hand landmark lines
+    const chains=[[0,1,2,3,4],[0,5,6,7,8],
+      [5,9,10,11,12],[9,13,14,15,16],
+      [13,17,18,19,20],[0,17]];
+    ctx.strokeStyle="#ffe600b0";ctx.lineWidth=2;
+    for(const chain of chains){
+      ctx.beginPath();
+      chain.forEach((id,i)=>{
+        const p=hand[id], x=(1-p.x)*w, y=p.y*h;
+        if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+    }
+    for(const p of hand){
+      ctx.fillStyle="#fff5a0";
+      ctx.beginPath();ctx.arc((1-p.x)*w,p.y*h,2.5,0,Math.PI*2);ctx.fill();
+    }
+  }
+
+  // Floating matter
+  for(const o of objects){
+    if(!o.alive)continue;
+    if(!o.grabbed){o.phase+=.008;o.y+=Math.sin(o.phase)*.15;}
+    ctx.save();ctx.translate(o.x,o.y);
+    ctx.rotate(t*.2+o.phase);
+    ctx.strokeStyle=o.grabbed?"#fff":"#ffe600";
+    ctx.lineWidth=1.5;
+    ctx.strokeRect(-o.r,-o.r,o.r*2,o.r*2);
+    ctx.beginPath();
+    ctx.moveTo(-o.r*.6,0);ctx.lineTo(o.r*.6,0);
+    ctx.moveTo(0,-o.r*.6);ctx.lineTo(0,o.r*.6);
+    ctx.stroke();
+    ctx.restore();
+    if(o.grabbed){
+      ctx.strokeStyle="#ffe60060";
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(o.x,o.y);ctx.stroke();
+    }
+  }
+
+  // Energy particles
+  particles=particles.filter(p=>p.life>0);
+  for(const p of particles){
+    p.x+=p.vx;p.y+=p.vy;p.life--;
+    ctx.fillStyle=`rgba(255,230,0,${Math.min(1,p.life/25)})`;
+    ctx.fillRect(p.x,p.y,2,2);
+  }
+
+  // Corner brackets
+  ctx.strokeStyle="#ffe60090";ctx.lineWidth=2;
+  for(const [x,y,sx,sy] of [[18,90,1,1],[w-18,90,-1,1],
+    [18,h-18,1,-1],[w-18,h-18,-1,-1]]){
+    ctx.beginPath();ctx.moveTo(x,y+sy*22);ctx.lineTo(x,y);ctx.lineTo(x+sx*22,y);ctx.stroke();
+  }
+}
+</script>
+</body>
+</html>
